@@ -136,8 +136,14 @@ def play_drm(mpdurl, preurl, titolo='', plot=''):
         'origin': G.HEADERS_SET['origin'],
         'referer': G.HEADERS_SET['referer'],
     }
-    response = requests.get(preurl, headers=headers_tok, verify=False).json()
-    pre_auth_token = response['preAuthToken']
+    try:
+        response = requests.get(preurl, headers=headers_tok, verify=False).json()
+        pre_auth_token = response['preAuthToken']
+    except Exception as exc:
+        xbmc.log('RivediLA7: DRM token request failed (%s)' % exc, xbmc.LOGERROR)
+        xbmcgui.Dialog().ok(G.PLUGIN_NAME, G.LANGUAGE(32005))
+        xbmcplugin.endOfDirectory(G.PLUGIN_HANDLE, succeeded=False)
+        return
 
     headers_lic = {
         'host': G.HEADERS_SET['host_license'],
