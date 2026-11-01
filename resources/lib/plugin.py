@@ -299,55 +299,88 @@ def giorno_label(data):
     return '%s %d %s' % (GIORNI_SETTIMANA[date.weekday()], date.day, MESI[date.month - 1])
 
 
+def video_link(video):
+    """ Playable URL of a la7play.it node (NodeReplica/NodeVideo/NodeEventoSingolo),
+    returned together with a flag telling whether the stream is DRM protected """
+    if not video:
+        return '', False
+    if video.get('urlVideo'):
+        return video['urlVideo'], False
+    upload = video.get('uploadVideo') or {}
+    remote = upload.get('cf_remote_url') or ''
+    if not remote:
+        return '', False
+    if video.get('drm'):
+        # Encrypted content is published as a single DASH stream on the DRM CDN
+        name = remote.lstrip('/').split('/')[-1]
+        return '%s/%s/DASH/%s.mpd' % (G.URL_CDN_DRM.rstrip('/'), name, name), True
+    # Clear content is published as a Kaltura urlset of progressive MP4 renditions:
+    # strip the .mp4 suffix and let the CDN build the HLS playlist on the fly
+    paths = remote if remote.startswith('/') else '/' + remote
+    paths = paths.replace('.mp4', '')
+    if not upload.get('cf_old_entry_id'):
+        entries = []
+        for entry in paths.split(','):
+            entry = entry.strip()
+            if not entry or entry.startswith('/nk/'):
+                entries.append(entry)
+            elif entry.startswith('/'):
+                entries.append('/nk' + entry)
+            else:
+                entries.append('/nk/' + entry)
+        paths = ','.join(entries)
+    return '%s/local/hls/,%s,.mp4.urlset/master.m3u8' % (G.URL_CDN_VOD.rstrip('/'), paths), False
+
+
+def drm_token_url():
+    """ VOD pre-authorization token URL used by the la7play player """
+    return '%s?id=%s&contentType=VOD&v=%d' % (G.URL_DRM_TOKEN, G.DRM_CONTENT_ID, int(time.time() * 1000))
+
+
 def play_video(page_video, live):
     xbmc.log('PLAY VIDEO', xbmc.LOGINFO)
-    #xbmc.log('PAGE VIDEO-----: '+str(page_video),xbmc.LOGINFO)
-
-    # regex1 = 'vS = "(.*?)"'
-    regex2 = r'\.net/i/.*?content/(.*?)(?:\.mp4)'
-    regex3 = 'm3u8: "(.*?)"'
-    # regex4 = '  <iframe src="(.*?)"'
-
-    req = Request(page_video, headers={'user-agent': G.HEADERS_SET['user-agent']})
-    page = urlopen(req).read()
-    html = page.decode('utf-8', errors='ignore')
     if live:
         return
-        # if re.findall(regex1, html):
-        # xbmc.log('REGEX1-----: '+str(re.findall(regex1, html)),xbmc.LOGINFO)
-        #     link_video = re.findall(regex1, html)[0]
-    else:
-        if re.findall(regex2, html):
-            # xbmc.log('REGEX2-----: '+str(re.findall(regex2, html)),xbmc.LOGINFO)
-            link_video = 'https://awsvodpkg.iltrovatore.it/local/hls/,/content/' + re.findall(regex2, html)[0] + '.mp4.urlset/master.m3u8'
-            # xbmc.log('LINK2-----: '+str(link_video),xbmc.LOGINFO)
-        # elif re.findall(regex5, html) or re.findall(regex5, html):
-        #     xbmc.log('REGEX5-----: '+str(re.findall(regex5, html)),xbmc.LOGINFO)
-        #     link_video = 'https://awsvodpkg.iltrovatore.it/local/hls/,/content/' + re.findall(regex5, html)[0] + '_1.mp4.urlset/master.m3u8'
-        #     xbmc.log('LINK5-----: '+str(link_video),xbmc.LOGINFO)
-        elif re.findall(regex3, html):
-            # xbmc.log('REGEX3-----: '+str(re.findall(regex3, html)),xbmc.LOGINFO)
-            link_video = re.findall(regex3, html)[0]
-            # xbmc.log('LINK3-----: '+str(link_video),xbmc.LOGINFO)
-        # video .mp4 dal Cerca
-        elif re.findall(r'mp4["\']?\s*:\s*["\'](https?://[^"\']+\.mp4)["\']', html):
-            link_video = re.findall(r'mp4["\']?\s*:\s*["\'](https?://[^"\']+\.mp4)["\']', html)[0]
 
-        else:
-            # xbmc.log('DECODIFICA DRM',xbmc.LOGINFO)
+    try:
+        html = fetch_page(page_video)
+    except Exception as exc:
+        xbmc.log('RivediLA7: unable to load %s (%s)' % (page_video, exc), xbmc.LOGERROR)
+        xbmcgui.Dialog().ok(G.PLUGIN_NAME, G.LANGUAGE(32005))
+        xbmcplugin.endOfDirectory(G.PLUGIN_HANDLE, succeeded=False)
+        return
+
+    link_video, is_drm = video_link(rsc_value(rsc_payload(html), 'videoData'))
+
+    if not link_video:
+        # Pages not served by la7play.it still embed a plain mp4/HLS link
+        found = re.findall(r'\.net/i/.*?content/(.*?)(?:\.mp4)', html)
+        found_m3u8 = re.findall('m3u8: "(.*?)"', html)
+        found_mp4 = re.findall(r'mp4["\']?\s*:\s*["\'](https?://[^"\']+\.mp4)["\']', html)
+        if found:
+            link_video = G.URL_CDN_VOD + '/local/hls/,/content/' + found[0] + '.mp4.urlset/master.m3u8'
+        elif found_m3u8:
+            link_video = found_m3u8[0]
+        elif found_mp4:
+            link_video = found_mp4[0]
+        elif 'preTokenUrl = "' in html:
             play_dirette(page_video, False)
             return
 
     listitem = xbmcgui.ListItem(G.TITOLO, offscreen=True)
-    listitem.setInfo('video', {'Title': G.TITOLO})
+    listitem.setInfo('video', {'title': G.TITOLO, 'plot': G.PLOT})
     if G.THUMB != "":
         listitem.setArt({'thumb': G.THUMB})
-    listitem.setInfo('video', {'plot': G.PLOT})
-    if link_video == '':
+    if not link_video:
         xbmc.log('RivediLA7: NO VIDEO LINK', xbmc.LOGINFO)
         xbmcgui.Dialog().ok(G.PLUGIN_NAME, G.LANGUAGE(32005))
         xbmcplugin.setResolvedUrl(G.PLUGIN_HANDLE, False, listitem)
         return
+
+    if is_drm:
+        play_drm(link_video, drm_token_url())
+        return
+
     if '.m3u8' in link_video:
         listitem.setProperty('inputstream', 'inputstream.adaptive')
         listitem.setProperty('inputstream.adaptive.manifest_type', 'hls')
