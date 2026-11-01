@@ -51,6 +51,8 @@ class GlobalVariables(object):
         'filteredNodeVideos': '6f384b6747f1a846',
         'filteredNodeVideosNextPage': 'fe69b4f8f4cbd498',
         'filteredNodeReplicas': 'e4ec45c8e38bb081',
+        'filteredNodeReplicasNextPage': '58f48c68e20819bd',
+        'filteredNodeVideosNextPage2': 'fe69b4f8f4cbd498',
         'nodePage': 'e9d39e6838f7f588',
         'nodeMenu': '4c25fdabd87a3720',
     }

@@ -449,6 +449,21 @@ def la7play_next_page(url, pagina):
         return False
 
 
+def la7play_archivio(pathname, cursor=''):
+    """ The episodes of a program, 20 per page, newest first as on the site """
+    programma = pathname.strip('/').split('/')[0]
+    if cursor:
+        data = gql('filteredNodeReplicasNextPage', {'path': programma, 'value': 20, 'after': cursor})
+    else:
+        data = gql('filteredNodeReplicas', {'path': programma, 'value': 20})
+    result = data.get('filteredNodeReplicas') or data.get('filteredNodeReplicasNextPage') or {}
+    nodes = result.get('nodes') or []
+    nodes.sort(key=lambda node: str(node.get('dataMessaInOnda') or node.get('created') or ''), reverse=True)
+    la7play_emit(nodes, reset=True, end=False)
+    page_info = result.get('pageInfo') or {}
+    return page_info.get('startCursor') if page_info.get('hasNextPage') else ''
+
+
 def la7play_nodes(url):
     """ Content nodes (a path plus a title) published in a la7play.it page """
     nodes = []
@@ -1105,7 +1120,15 @@ def video_programma():
         pathname = G.LINK[len(G.URL_PLAY_BASE):].rstrip('/')
         pagina = max(G.PAGENUM, 1)
         url = G.LINK if pagina < 2 else '%s?page=%d' % (G.LINK, pagina)
-        la7play_repliche(pathname)
+        if pathname.rsplit('/', 1)[-1] == 'puntate':
+            # the archive is a query, not a page: 20 episodes per page, newest first
+            # the archive is a single query page: the cursor the site uses to ask
+            # for the following one does not continue from the page we render, so
+            # no "next page" is offered rather than repeating the same episodes
+            la7play_archivio(pathname, urllib.parse.unquote(G.PARAMS.get('cursor', '')))
+            xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=True)
+            return
+        la7play_repliche(pathname) if pathname.count('/') == 1 else None
         nodes = [node for node in la7play_nodes(url)
                  if not _is_ancestor(node.get('path') or node.get('pathname'), pathname)]
         la7play_emit(nodes, end=False)
