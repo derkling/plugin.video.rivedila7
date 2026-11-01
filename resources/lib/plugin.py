@@ -514,7 +514,7 @@ def documentari():
     la7play_hub(G.URL_DOCUMENTARI)
 
 
-def la7play_emit(nodes, reset=False):
+def la7play_emit(nodes, reset=False, end=True):
     if reset:
         _EMITTED.clear()
     for node in nodes:
@@ -539,7 +539,10 @@ def la7play_emit(nodes, reset=False):
             xbmcplugin.addDirectoryItem(handle=G.PLUGIN_HANDLE, url=url2, listitem=liStyle, isFolder=False)
         else:
             add_directory_item_nodup({"mode": G.MODE, "link": G.URL_PLAY_BASE + path}, liStyle, titolo)
-    xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=True)
+    if end:
+        # Kodi drops every item added after endOfDirectory, so a caller that has
+        # more to add must close the directory itself
+        xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=True)
 
 
 def video_link(video):
@@ -1105,7 +1108,7 @@ def video_programma():
         la7play_repliche(pathname)
         nodes = [node for node in la7play_nodes(url)
                  if not _is_ancestor(node.get('path') or node.get('pathname'), pathname)]
-        la7play_emit(nodes)
+        la7play_emit(nodes, end=False)
         sezioni = []
         if pagina < 2 and pathname.count('/') == 1:
             # only a program page has categories, a category page only has videos

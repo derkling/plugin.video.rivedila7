@@ -27,6 +27,9 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 
 ITEMS = []
+LISTER = None
+CLOSED = False
+DROPPED = 0
 RESOLVED = []
 DIALOGS = []
 
@@ -87,10 +90,27 @@ def install_stubs():
     xbmcgui.ListItem, xbmcgui.Dialog, xbmcgui.Window = ListItem, Dialog, Window
 
     xbmcplugin = types.ModuleType('xbmcplugin')
-    xbmcplugin.addDirectoryItem = lambda handle, url, listitem, isFolder=True: ITEMS.append(
-        {'url': url, 'label': listitem.label, 'item': listitem, 'folder': isFolder}) or True
-    xbmcplugin.endOfDirectory = lambda handle, succeeded=True, **kw: ITEMS.append(
-        {'end': True, 'succeeded': succeeded})
+
+    class _Lister(object):
+        """ Kodi drops every item added after endOfDirectory: do the same """
+
+        def addDirectoryItem(self, handle, url, listitem, isFolder=True):
+            global DROPPED
+            if CLOSED:
+                DROPPED += 1
+                return True
+            return ITEMS.append({'url': url, 'label': listitem.label,
+                                 'item': listitem, 'folder': isFolder}) or True
+
+        def endOfDirectory(self, handle, succeeded=True, **kw):
+            global CLOSED
+            CLOSED = True
+            return ITEMS.append({'end': True, 'succeeded': succeeded})
+
+    global LISTER
+    LISTER = _Lister()
+    xbmcplugin.addDirectoryItem = LISTER.addDirectoryItem
+    xbmcplugin.endOfDirectory = LISTER.endOfDirectory
     xbmcplugin.setResolvedUrl = lambda handle, succeeded, listitem: RESOLVED.append(
         {'succeeded': succeeded, 'item': listitem})
     xbmcplugin.setContent = lambda handle, content: None
@@ -166,8 +186,13 @@ def run_addon(query):
     ITEMS.clear()
     RESOLVED.clear()
     DIALOGS.clear()
+    global CLOSED, DROPPED
+    CLOSED = False
+    DROPPED = 0
     from resources.lib import plugin
     plugin.run(['plugin://plugin.video.rivedila7/', '1', query])
+    if DROPPED:
+        DIALOGS.append('dropped %d item(s) added after endOfDirectory' % DROPPED)
     return [i for i in ITEMS if not i.get('end')], list(RESOLVED), list(DIALOGS)
 
 

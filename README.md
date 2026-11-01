@@ -7,6 +7,10 @@ Live Streaming, Replay the last week, LA7 Cinema, On-Demand programs, News & Wea
 "sudo apt install kodi-inputstream-adaptive"
 
 ### Changelog
+7.2.5 (2026-11-01)
+- Show the categories of a program in Kodi too: they were added after `endOfDirectory`, which Kodi discards, so only the last videos appeared
+- The CLI harness now enforces the same rule, so this cannot pass verification again
+
 7.2.4 (2026-11-01)
 - Reload the add-on code on every call (`reuselanguageinvoker` off): an update takes effect without restarting Kodi, which made a new build look like the old one
 
