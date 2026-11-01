@@ -15,6 +15,8 @@ scrapers.
                                                 show what playback would open
 """
 import argparse
+import datetime
+import json
 import os
 import sys
 import types
@@ -190,6 +192,28 @@ def walk(mode, params, depth, indent=0):
     return items, dialogs
 
 
+def smoke():
+    """ Walk every section and report the ones that no longer list anything """
+    today = datetime.date.today().strftime('%d-%m-%Y')
+    sections = [
+        ('rivedi_la7', {}, 3),
+        ('rivedi_la7cinema', {}, 1),
+        ('rivedi_la7', {'giorno': today}, 3),
+        ('la7_prime', {}, 1),
+        ('la7_prime', {'link': 'https://www.la7play.it/film'}, 10),
+        ('tutti_programmi', {}, 20),
+    ]
+    failures = 0
+    for mode, params, minimum in sections:
+        items, _, dialogs = run_addon(mode_url(mode, params))
+        ok = len(items) >= minimum and not dialogs
+        failures += 0 if ok else 1
+        print('%-4s %-18s %-46s %3d entries (min %d) %d dialogs' % (
+            'ok' if ok else 'FAIL', mode, str(params), len(items), minimum, len(dialogs)))
+    print('%d section(s) failing' % failures)
+    return 0 if not failures else 1
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -199,6 +223,8 @@ def main():
     parser.add_argument('--depth', type=int, default=1, help='follow folder items (default 1)')
     parser.add_argument('--url', help='list the content nodes of a la7play.it page')
     parser.add_argument('--play', help='resolve the stream of a la7play.it page')
+    parser.add_argument('--gql', metavar='NAME', help='run a la7play.it query, key=value variables')
+    parser.add_argument('--smoke', action='store_true', help='walk every section, fail if one is empty')
     args = parser.parse_args()
 
     install_stubs()
@@ -217,6 +243,14 @@ def main():
             print('%-46s %s' % ((node.get('path') or node.get('pathname'))[:46],
                                 node.get('titolo') or node.get('title') or node.get('nome')))
         return 0
+
+    if args.gql:
+        variables = {key: value for key, value in (arg.split('=', 1) for arg in args.params)} or None
+        print(json.dumps(plugin.gql(args.gql, variables), indent=2, ensure_ascii=False)[:4000])
+        return 0
+
+    if args.smoke:
+        return smoke()
 
     if args.play:
         _, resolved, dialogs = run_addon(mode_url('rivedi_la7', {'play': args.play, 'titolo': 't'}))

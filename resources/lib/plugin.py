@@ -1,3 +1,4 @@
+import base64
 import datetime
 import json
 import os
@@ -299,6 +300,53 @@ def giorno_label(data):
     return '%s %d %s' % (GIORNI_SETTIMANA[date.weekday()], date.day, MESI[date.month - 1])
 
 
+class GqlError(Exception):
+    """ A la7play.it query failed, the site probably changed its query ids """
+
+
+def gql_hash(name):
+    """ Persisted query id of a la7play.it GraphQL query """
+    return G.GQL_QUERIES[name]
+
+
+def gql(name, variables=None):
+    """ Run a persisted la7play.it query and return its data object """
+    url = '%s/api/gql/%s' % (G.URL_PLAY_BASE, gql_hash(name))
+    if variables is not None:
+        # the variables travel as sorted, unpadded base64url JSON
+        encoded = json.dumps(variables, separators=(',', ':'), sort_keys=True).encode('utf-8')
+        url += '/' + base64.urlsafe_b64encode(encoded).decode('utf-8').rstrip('=')
+    headers = {'user-agent': G.HEADERS_SET['user-agent'], 'accept': 'application/json',
+               'referer': G.URL_PLAY_BASE + '/'}
+    try:
+        data = requests.get(url, headers=headers, timeout=30).json()
+    except Exception as exc:
+        raise GqlError('%s (%s)' % (name, exc))
+    if not isinstance(data, dict) or 'data' not in data:
+        raise GqlError('%s returned no data' % name)
+    return data['data']
+
+
+def la7play_programmi():
+    """ List the programs published by the la7play.it index """
+    programmi = gql('allPrograms').get('graphqlTuttiProgrammi', {}).get('results') or []
+    for programma in programmi:
+        titolo = (programma.get('titolo') or '').strip()
+        pathname = programma.get('pathname') or ''
+        if not titolo or not pathname:
+            continue
+        liStyle = xbmcgui.ListItem(titolo, offscreen=True)
+        art = {'fanart': G.FANART_PATH}
+        if programma.get('img'):
+            art['thumb'] = programma['img']
+        liStyle.setArt(art)
+        if programma.get('occhiello'):
+            liStyle.setInfo('video', {'plot': programma['occhiello'].strip()})
+        add_directory_item_nodup({"mode": G.MODE, "link": G.URL_PLAY_BASE + pathname}, liStyle, titolo)
+    xbmcplugin.addSortMethod(G.PLUGIN_HANDLE, xbmcplugin.SORT_METHOD_LABEL_IGNORE_FOLDERS)
+    xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=True)
+
+
 def la7play_nodes(url):
     """ Content nodes (a path plus a title) published in a la7play.it page """
     nodes = []
@@ -541,14 +589,8 @@ def process_program_data(dati, config):
 
 
 def programmi_lettera():
-    req_p = Request(G.URL_PROGRAMMI, headers={'user-agent': G.HEADERS_SET['user-agent']})
-    page_p = urlopen(req_p)
-    html_p = BeautifulSoup(page_p, 'html.parser')
-    programmi = html_p.find(id='container-programmi-list').find_all('div', class_='list-item')
-    req_tp = Request(G.URL_TUTTI_PROGRAMMI, headers={'user-agent': G.HEADERS_SET['user-agent']})
-    page_tp = urlopen(req_tp)
-    html_tp = BeautifulSoup(page_tp, 'html.parser')
-    tutti_programmi = html_tp.find_all('div', class_='list-item')
+    la7play_programmi()
+    return
 
     config_path = os.path.join(os.path.dirname(__file__), 'config.json')
     with open(config_path, 'r') as config_file:

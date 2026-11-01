@@ -34,6 +34,16 @@ class GlobalVariables(object):
     URL_CERCA_LA7 = "https://www.la7play.it/ricerca?query="
     URL_FILM = "https://www.la7play.it/film"
 
+    # la7play.it persisted GraphQL queries (re-discover them with tools/browse.py --gql)
+    GQL_QUERIES = {
+        'allPrograms': 'f7034d55158fc906',
+        'nodeReplica': '64b0309c926cd9f8',
+        'playerSettingsReplica': 'a3db22fe0ebb31ce',
+        'desktopLeafVideoBundle': '656f3c6b927a1a0c',
+        'desktopLeafReplicaBundle': '022b8f4f2fb98d68',
+        'desktopNodeBio': '23bed4d00e549922',
+    }
+
 
 
     # DRM config
