@@ -7,6 +7,10 @@ Live Streaming, Replay the last week, LA7 Cinema, On-Demand programs, News & Wea
 "sudo apt install kodi-inputstream-adaptive"
 
 ### Changelog
+7.2.7 (2026-11-01)
+- Open the archive of every category, not only of `Puntate`: the episodes come from the site query, while the page only carries a few teasers
+- A program page shows its categories instead of the two or three videos its page happens to include
+
 7.2.6 (2026-11-01)
 - List the episodes of a program from the archive the site uses: 20 per page, newest first, instead of a few episodes mixed with the reruns of the week
 - The `puntate` category no longer mixes the week replays into the archive

@@ -450,18 +450,28 @@ def la7play_next_page(url, pagina):
 
 
 def la7play_archivio(pathname, cursor=''):
-    """ The episodes of a program, 20 per page, newest first as on the site """
+    """ The episodes of a category, 20 per page, newest first as on the site.
+
+    Returns False when the archive of the site does not match the category
+    (a program publishes clips too), so the caller falls back to the page.
+    """
     programma = pathname.strip('/').split('/')[0]
-    if cursor:
-        data = gql('filteredNodeReplicasNextPage', {'path': programma, 'value': 20, 'after': cursor})
-    else:
-        data = gql('filteredNodeReplicas', {'path': programma, 'value': 20})
+    try:
+        name = gql('nodePage', {'path': programma})['route']['entity'].get('name') or programma
+        data = gql('filteredNodeReplicasNextPage', {'path': name, 'value': 20, 'after': cursor}) \
+            if cursor else gql('filteredNodeReplicas', {'path': name, 'value': 20})
+    except Exception as error:
+        xbmc.log('RivediLA7: archive of %s unavailable (%s)' % (pathname, error), xbmc.LOGWARNING)
+        return False
     result = data.get('filteredNodeReplicas') or data.get('filteredNodeReplicasNextPage') or {}
     nodes = result.get('nodes') or []
+    prefisso = pathname.rstrip('/') + '/'
+    if not nodes or not str(nodes[0].get('path') or '').startswith(prefisso):
+        return False
     nodes.sort(key=lambda node: str(node.get('dataMessaInOnda') or node.get('created') or ''), reverse=True)
+    xbmc.log('RivediLA7: archive %s -> %d episodi' % (pathname, len(nodes)), xbmc.LOGINFO)
     la7play_emit(nodes, reset=True, end=False)
-    page_info = result.get('pageInfo') or {}
-    return page_info.get('startCursor') if page_info.get('hasNextPage') else ''
+    return True
 
 
 def la7play_nodes(url):
@@ -1120,22 +1130,24 @@ def video_programma():
         pathname = G.LINK[len(G.URL_PLAY_BASE):].rstrip('/')
         pagina = max(G.PAGENUM, 1)
         url = G.LINK if pagina < 2 else '%s?page=%d' % (G.LINK, pagina)
-        if pathname.rsplit('/', 1)[-1] == 'puntate':
-            # the archive is a query, not a page: 20 episodes per page, newest first
-            # the archive is a single query page: the cursor the site uses to ask
-            # for the following one does not continue from the page we render, so
-            # no "next page" is offered rather than repeating the same episodes
-            la7play_archivio(pathname, urllib.parse.unquote(G.PARAMS.get('cursor', '')))
-            xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=True)
-            return
-        la7play_repliche(pathname) if pathname.count('/') == 1 else None
+        if pathname.count('/') > 1:
+            # a category page holds the whole archive of that category, and the
+            # archive is a query, not a page: 20 episodes, newest first. The cursor
+            # the site uses for the following page does not continue from the page
+            # we render, so no "next page" is offered rather than repeating it.
+            if la7play_archivio(pathname):
+                xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=True)
+                return
+        else:
+            la7play_repliche(pathname)
         nodes = [node for node in la7play_nodes(url)
                  if not _is_ancestor(node.get('path') or node.get('pathname'), pathname)]
-        la7play_emit(nodes, end=False)
-        sezioni = []
-        if pagina < 2 and pathname.count('/') == 1:
-            # only a program page has categories, a category page only has videos
-            sezioni = la7play_sezioni(pathname)
+        sezioni = la7play_sezioni(pathname) if pagina < 2 and pathname.count('/') == 1 else []
+        if not sezioni:
+            # the site shows the categories of a program, not the few teasers its
+            # page carries: keep those only when there is no category to open
+            la7play_emit(nodes, end=False)
+        else:
             for sezione, nome in sezioni:
                 liStyle = xbmcgui.ListItem(nome, offscreen=True)
                 liStyle.setArt({'fanart': G.FANART_PATH})
