@@ -494,9 +494,15 @@ def video_link(video):
     return '%s/local/hls/,%s,.mp4.urlset/master.m3u8' % (G.URL_CDN_VOD.rstrip('/'), paths), False
 
 
-def drm_token_url():
-    """ VOD pre-authorization token URL used by the la7play player """
-    return '%s?id=%s&contentType=VOD&v=%d' % (G.URL_DRM_TOKEN, G.DRM_CONTENT_ID, int(time.time() * 1000))
+def drm_token_url(content_type='VOD', content_id=None):
+    """ Pre-authorization token URL used by the la7play player """
+    return '%s?id=%s&contentType=%s&v=%d' % (G.URL_DRM_TOKEN, content_id or G.DRM_CONTENT_ID,
+                                             content_type, int(time.time() * 1000))
+
+
+def play_live(mpdurl, content_id, titolo):
+    """ Play a live channel: DASH + Widevine, token for the live content """
+    play_drm(mpdurl, drm_token_url('LIVE', content_id), titolo, titolo)
 
 
 def play_video(page_video, live):
@@ -1302,13 +1308,13 @@ def run(argv):
 def dispatch():
     """ Route the request to the function of the current mode """
     if G.MODE == "diretta_la7":
-        play_dirette(G.URL_LIVE_LA7, True)
+        play_live(G.URL_MPD_LIVE_LA7, G.DRM_LIVE_ID_LA7, G.LANGUAGE(32002))
 
     elif G.MODE == "diretta_la7cinema":
-        play_dirette(G.URL_LIVE_LA7CINEMA, True)
+        play_live(G.URL_MPD_LIVE_LA7CINEMA, G.DRM_LIVE_ID_LA7CINEMA, G.LANGUAGE(32009))
 
     elif G.MODE == "diretta_la7eventi":
-        play_dirette(G.URL_LIVE_LA7EVENTI, True)
+        play_live(G.URL_MPD_LA7EVENTI, G.DRM_LIVE_ID_LA7, G.LANGUAGE(32011))
 
     elif G.MODE == "rivedi_la7":
         if G.PLAY == "":

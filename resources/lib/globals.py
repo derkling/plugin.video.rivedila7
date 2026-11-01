@@ -61,6 +61,12 @@ class GlobalVariables(object):
     URL_CDN_DRM = "https://d3iki3eydrtvsa.cloudfront.net"
     URL_DRM_TOKEN = "https://svc-01.la7play.it/DRM/tk.php"
     DRM_CONTENT_ID = "667"
+
+    # Live channels: fixed DASH manifests on the DRM CDN, token keyed by content id
+    URL_MPD_LIVE_LA7 = "https://d15umi5iaezxgx.cloudfront.net/LA7/DRM/DASH/Live.mpd"
+    URL_MPD_LIVE_LA7CINEMA = "https://d15umi5iaezxgx.cloudfront.net/LA7CINEMA/DRM/DASH/Live.mpd"
+    DRM_LIVE_ID_LA7 = "1"
+    DRM_LIVE_ID_LA7CINEMA = "2"
     HEADERS_SET = {
         'host_license': 'la7.prod.conax.cloud',
         'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36',
