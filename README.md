@@ -7,6 +7,11 @@ Live Streaming, Replay the last week, LA7 Cinema, On-Demand programs, News & Wea
 "sudo apt install kodi-inputstream-adaptive"
 
 ### Changelog
+7.2.3 (2026-11-01)
+- Open the categories of a program (`Puntate`, `Clip`, …) with paginated access to the whole archive, instead of stopping at the last videos
+- Log the categories found on a program page, so the add-on can be compared with the site
+- Do not mistake a video for a category of its own program
+
 7.2.2 (2026-11-01)
 - Browse again after the la7.it -> la7play.it migration: replay, programs, films, documentaries and search read the new site
 - Play the live channels from the DASH manifest and the token the la7play player uses

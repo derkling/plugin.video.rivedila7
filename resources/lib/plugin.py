@@ -1106,12 +1106,16 @@ def video_programma():
         nodes = [node for node in la7play_nodes(url)
                  if not _is_ancestor(node.get('path') or node.get('pathname'), pathname)]
         la7play_emit(nodes)
-        if pagina < 2 and pathname.rsplit('/', 1)[-1] not in LA7PLAY_SEZIONI:
-            for sezione, nome in la7play_sezioni(pathname):
-                liStyle = xbmcgui.ListItem(nome, offscreen=True)
+        sezioni = []
+        if pagina < 2 and pathname.count('/') == 1:
+            # only a program page has categories, a category page only has videos
+            sezioni = la7play_sezioni(pathname)
+            for sezione, nome in sezioni:
                 liStyle = xbmcgui.ListItem(nome, offscreen=True)
                 liStyle.setArt({'fanart': G.FANART_PATH})
                 add_directory_item_nodup({"mode": G.MODE, "link": G.URL_PLAY_BASE + sezione}, liStyle, nome)
+        xbmc.log('RivediLA7: %s page %s -> %d nodes, %d sezioni %s' % (
+            pathname, pagina, len(nodes), len(sezioni), [nome for _, nome in sezioni]), xbmc.LOGINFO)
         if nodes and la7play_next_page(G.LINK, pagina):
             li_next = xbmcgui.ListItem('>> Pagina Successiva', offscreen=True)
             li_next.setArt({'fanart': G.FANART_PATH})
