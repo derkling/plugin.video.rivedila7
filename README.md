@@ -7,6 +7,13 @@ Live Streaming, Replay the last week, LA7 Cinema, On-Demand programs, News & Wea
 "sudo apt install kodi-inputstream-adaptive"
 
 ### Changelog
+7.2.2 (2026-11-01)
+- Browse again after the la7.it -> la7play.it migration: replay, programs, films, documentaries and search read the new site
+- Play the live channels from the DASH manifest and the token the la7play player uses
+- Add the `Documentari` section, drop the sections the site no longer publishes (Personaggi, LA7 Eventi, TG & Meteo, Film e Fiction, Non Classificati)
+- Play clear content with Kodi's own player, `inputstream.adaptive` is only needed for DRM
+- Show an error message instead of failing when a page cannot be read
+
 7.2.1 (2026-11-01)
 - Fix replay after the la7.it -> la7play.it migration, the old `/rivedila7` pages answer with a 404
 - Read the schedule from the new guida TV pages
