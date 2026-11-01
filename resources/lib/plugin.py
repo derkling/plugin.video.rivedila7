@@ -9,6 +9,14 @@ import requests
 
 # paths already added to the directory being built, to avoid showing an item twice
 _EMITTED = set()
+
+# sub-section of a program page to the name shown in the add-on
+LA7PLAY_SEZIONI = {'puntate': 'Le puntate', 'video': 'Video', 'rivedila7': 'Archivio'}
+
+
+def _is_ancestor(path, pathname):
+    """ True when path is the page itself or one of its parents """
+    return bool(path) and path != '/' and pathname.startswith(path.rstrip('/'))
 import inputstreamhelper
 
 import urllib.parse
@@ -407,6 +415,20 @@ def la7play_repliche(pathname):
     return added
 
 
+def la7play_sezioni(pathname):
+    """ The sub-sections of a program page that publish something """
+    sezioni = []
+    for nome in LA7PLAY_SEZIONI:
+        path = pathname + '/' + nome
+        try:
+            # a section that the site does not publish answers 404
+            if la7play_nodes(G.URL_PLAY_BASE + path):
+                sezioni.append(path)
+        except Exception:
+            continue
+    return sezioni
+
+
 def la7play_nodes(url):
     """ Content nodes (a path plus a title) published in a la7play.it page """
     nodes = []
@@ -481,7 +503,8 @@ def la7play_emit(nodes, reset=False):
         plot = (node.get('sinossi') or node.get('sinossibreve') or node.get('description') or '').strip()
         thumb = node.get('coverImage') or node.get('smartTvLocandina') or ''
         upload = node.get('uploadVideo') or {}
-        playable = bool(upload.get('cf_remote_url')) or '/puntate/' in path or path.startswith('/film/')
+        playable = (bool(upload) or bool(node.get('urlVideo')) or '/puntate/' in path
+                    or '/rivedila7/' in path or path.startswith('/film/'))
         liStyle = xbmcgui.ListItem(titolo, offscreen=True)
         art = {'fanart': G.FANART_PATH}
         if isinstance(thumb, str) and thumb.startswith('http'):
@@ -1057,11 +1080,23 @@ def video_programma():
     # replays of the week first, then whatever else the page publishes
     if G.LINK.startswith(G.URL_PLAY_BASE):
         pathname = G.LINK[len(G.URL_PLAY_BASE):].rstrip('/')
+        pagina = max(G.PAGENUM, 1)
+        url = G.LINK if pagina < 2 else '%s?page=%d' % (G.LINK, pagina)
         la7play_repliche(pathname)
-        all_nodes = la7play_nodes(G.LINK)
-        nodes = [node for node in all_nodes
-                 if (node.get('path') or node.get('pathname')) != pathname]
-        la7play_emit(nodes or all_nodes)
+        nodes = [node for node in la7play_nodes(url)
+                 if not _is_ancestor(node.get('path') or node.get('pathname'), pathname)]
+        la7play_emit(nodes)
+        if pagina < 2 and pathname.rsplit('/', 1)[-1] not in LA7PLAY_SEZIONI:
+            for sezione in la7play_sezioni(pathname):
+                nome = LA7PLAY_SEZIONI[sezione.rsplit('/', 1)[-1]]
+                liStyle = xbmcgui.ListItem(nome, offscreen=True)
+                liStyle.setArt({'fanart': G.FANART_PATH})
+                add_directory_item_nodup({"mode": G.MODE, "link": G.URL_PLAY_BASE + sezione}, liStyle, nome)
+        if nodes:
+            li_next = xbmcgui.ListItem('>> Pagina Successiva', offscreen=True)
+            li_next.setArt({'fanart': G.FANART_PATH})
+            add_directory_item_nodup({"mode": G.MODE, "link": G.LINK, "page": str(pagina + 1)},
+                                     li_next, '>> Pagina Successiva')
         xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=True)
         return
 
