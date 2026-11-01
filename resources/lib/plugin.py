@@ -1,3 +1,4 @@
+import datetime
 import json
 import os
 import sys
@@ -171,6 +172,10 @@ def play_dirette(url, live):
 # embedded in each page.
 RSC_PUSH = 'self.__next_f.push('
 
+GIORNI_SETTIMANA = ['lunedi', 'martedi', 'mercoledi', 'giovedi', 'venerdi', 'sabato', 'domenica']
+MESI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio',
+        'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre']
+
 
 def fetch_page(url):
     """ Download a page and return its decoded HTML """
@@ -256,6 +261,34 @@ def rsc_value(payload, key):
         return None
 
 
+def guida_tv_giorni(url):
+    """ Return the days of a guida-tv-rivedi page, oldest first """
+    giorni = rsc_value(rsc_payload(fetch_page(url)), 'giorno') or []
+    result = []
+    for giorno in giorni:
+        data = (giorno.get('@attributes') or {}).get('data')
+        if data:
+            result.append({'data': data, 'programma': giorno.get('programma') or []})
+    return result
+
+
+def guida_tv_url():
+    """ guida-tv-rivedi page of the channel currently selected in the add-on """
+    if G.MODE == 'rivedi_la7cinema':
+        return G.URL_RIVEDILA7CINEMA
+    return G.URL_RIVEDILA7
+
+
+def giorno_label(data):
+    """ '01-11-2026' -> 'domenica 1 novembre' """
+    try:
+        day, month, year = [int(part) for part in data.split('-')]
+        date = datetime.date(year, month, day)
+    except (AttributeError, TypeError, ValueError):
+        return data
+    return '%s %d %s' % (GIORNI_SETTIMANA[date.weekday()], date.day, MESI[date.month - 1])
+
+
 def play_video(page_video, live):
     xbmc.log('PLAY VIDEO', xbmc.LOGINFO)
     #xbmc.log('PAGE VIDEO-----: '+str(page_video),xbmc.LOGINFO)
@@ -314,43 +347,65 @@ def play_video(page_video, live):
 
 
 def rivedi(url, thumb):
-    req = Request(url, headers={'user-agent': G.HEADERS_SET['user-agent']})
-    page = urlopen(req)
-    html = BeautifulSoup(page, 'html.parser')
-    G.GIORNO = html.find('div', class_='block block-system').find_all('div', class_=['item item--menu-guida-tv', 'item item--menu-guida-tv active'])
-    # xbmc.log('GIORNO----------: '+str(G.GIORNO),xbmc.LOGINFO)
-    if G.GIORNO:
-        for div in reversed(G.GIORNO):
-            date_day = div.find('div', class_='giorno-numero').text.strip()
-            date_month = div.find('div', class_='giorno-mese').text.strip()
-            date_row_week = div.find('div', class_='giorno-text').text.strip()
-            a = div.a.get('href').strip()
-            liStyle = xbmcgui.ListItem(date_row_week + " " + date_day + " " + date_month, offscreen=True)
-            liStyle.setArt({'thumb': os.path.join(G.THUMB_PATH, thumb), 'fanart': G.FANART_PATH})
-            add_directory_item_nodup({"mode": G.MODE, "giorno": a}, liStyle)
-        xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=True)
+    """ List the replayable days of the channel guida TV """
+    try:
+        giorni = guida_tv_giorni(url)
+    except Exception as exc:
+        xbmc.log('RivediLA7: unable to load %s (%s)' % (url, exc), xbmc.LOGERROR)
+        xbmcgui.Dialog().ok(G.PLUGIN_NAME, G.LANGUAGE(32005))
+        xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=False)
+        return
+
+    # Only days that still have at least one replayable program are listed
+    giorni = [giorno for giorno in giorni if any(prog.get('pathname') for prog in giorno['programma'])]
+    if not giorni:
+        xbmcgui.Dialog().ok(G.PLUGIN_NAME, G.LANGUAGE(32005))
+        xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=False)
+        return
+
+    for giorno in reversed(giorni):
+        liStyle = xbmcgui.ListItem(giorno_label(giorno['data']), offscreen=True)
+        liStyle.setArt({'thumb': os.path.join(G.THUMB_PATH, thumb), 'fanart': G.FANART_PATH})
+        add_directory_item_nodup({"mode": G.MODE, "giorno": giorno['data']}, liStyle)
+
+    xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=True)
 
 
 def rivedi_giorno():
-    req = Request(G.URL_BASE + G.GIORNO, headers={'user-agent': G.HEADERS_SET['user-agent']})
-    page = urlopen(req)
-    html = BeautifulSoup(page, 'html.parser')
-    guida_tv = html.find(id="content_guida_tv_rivedi").find_all('div', class_='item item--guida-tv')
-    if guida_tv:
-        for div in guida_tv:
-            orario = div.find('div', class_='orario').contents[0].strip()
-            nome = div.find('div', class_='property').text.strip()
-            thumb = 'https:' + div.find('div', class_='bg-img lozad').get('data-background-image')
-            plot = div.find('div', class_='occhiello').text.strip()
-            if div.a:
-                urll = div.a.get('href').strip()
-                # xbmc.log('------LINK------: '+str(urll),xbmc.LOGINFO)
-                liStyle = xbmcgui.ListItem(orario + " " + nome, offscreen=True)
-                liStyle.setArt({'thumb': thumb, 'fanart': G.FANART_PATH})
-                liStyle.setInfo('video', {'plot': plot})
-                liStyle.setProperty('isPlayable', 'true')
-                url2 = G.PLUGIN_URL + '?' + urllib.parse.urlencode({"mode": G.MODE, "play": urll, "titolo": nome, "thumb": thumb, "plot": plot})
-                xbmcplugin.addDirectoryItem(handle=G.PLUGIN_HANDLE, url=url2, listitem=liStyle, isFolder=False)
+    """ List the replayable programs of the selected day """
+    try:
+        giorni = guida_tv_giorni(guida_tv_url())
+    except Exception as exc:
+        xbmc.log('RivediLA7: unable to load the guida TV (%s)' % exc, xbmc.LOGERROR)
+        xbmcgui.Dialog().ok(G.PLUGIN_NAME, G.LANGUAGE(32005))
+        xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=False)
+        return
+
+    giorno = next((item for item in giorni if item['data'] == G.GIORNO), None)
+    if giorno is None:
+        xbmc.log('RivediLA7: day %s not found in the guida TV' % G.GIORNO, xbmc.LOGERROR)
+        xbmcgui.Dialog().ok(G.PLUGIN_NAME, G.LANGUAGE(32005))
+        xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=False)
+        return
+
+    for prog in giorno['programma']:
+        pathname = prog.get('pathname')
+        if not pathname:
+            continue
+        orario = (prog.get('ora') or '').strip()
+        nome = (prog.get('titolo') or '').strip()
+        thumb = prog.get('immagine_programma') or prog.get('immagine_scena') or ''
+        plot = (prog.get('sinossi') or '').strip()
+        liStyle = xbmcgui.ListItem(orario + " " + nome, offscreen=True)
+        art = {'fanart': G.FANART_PATH}
+        if thumb:
+            art['thumb'] = thumb
+        liStyle.setArt(art)
+        liStyle.setInfo('video', {'plot': plot})
+        liStyle.setProperty('isPlayable', 'true')
+        parameters = {"mode": G.MODE, "play": G.URL_PLAY_BASE + pathname, "titolo": nome, "thumb": thumb, "plot": plot}
+        url2 = G.PLUGIN_URL + '?' + urllib.parse.urlencode(parameters)
+        xbmcplugin.addDirectoryItem(handle=G.PLUGIN_HANDLE, url=url2, listitem=liStyle, isFolder=False)
 
     xbmcplugin.setContent(G.PLUGIN_HANDLE, 'episodes')
     xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=True)

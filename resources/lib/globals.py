@@ -25,8 +25,9 @@ class GlobalVariables(object):
     URL_MPD_LA7EVENTI = 'https://d15umi5iaezxgx.cloudfront.net/LA7FEED01/DRM/DASH/Live.mpd'
     URL_TGDIGITAL = "https://tg.la7.it/listing/tg-digital?page=0"
     URL_BASE_TGDIGITAL = "https://tg.la7.it"
-    URL_RIVEDILA7 = "https://www.la7.it/rivedila7/0/la7"
-    URL_RIVEDILA7CINEMA = "https://www.la7.it/rivedila7/0/la7cinema"
+    URL_PLAY_BASE = "https://www.la7play.it"
+    URL_RIVEDILA7 = "https://www.la7play.it/guida-tv-rivedi/la7"
+    URL_RIVEDILA7CINEMA = "https://www.la7play.it/guida-tv-rivedi/la7-cinema"
     URL_PROGRAMMI = "https://www.la7.it/programmi"
     URL_TUTTI_PROGRAMMI = "https://www.la7.it/tutti-i-programmi"
     URL_TECHE_LA7 = "https://www.la7.it/tutti-i-personaggi"
