@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.rivedila7" name="LA7-LA7Cinema" version="7.1.0" provider-name="Luivit, Testato">
+<addon id="plugin.video.rivedila7" name="LA7-LA7Cinema" version="7.2.1" provider-name="Luivit, Testato">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="0.0.0"/>
@@ -29,7 +29,14 @@
       <screenshot>resources/screenshots/screenshot-01.jpg</screenshot>
       <screenshot>resources/screenshots/screenshot-02.jpg</screenshot>
     </assets>
-    <news>7.1.0 (2026-10-08)
+    <news>7.2.1 (2026-11-01)
+- Fix replay after the la7.it -> la7play.it migration, the old /rivedila7 pages answer with a 404
+- Read the schedule from the new guida TV pages
+- Resolve the stream from the data published by la7play.it: HLS for clear content, DASH + Widevine for protected content
+- Play clear content with Kodi's own player, inputstream.adaptive is only needed for DRM
+- Show an error message instead of failing when a page cannot be read
+
+7.1.0 (2026-10-08)
 - Added Search function
 - Fix Personalities biography
 - LA7 Meteo replaced with Omnibus Meteo in the News and Weather section
