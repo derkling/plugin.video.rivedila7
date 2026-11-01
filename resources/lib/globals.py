@@ -19,19 +19,20 @@ class GlobalVariables(object):
     THUMB_PATH = os.path.join(xbmcaddon.Addon().getAddonInfo('path'), 'resources', 'images')
     
     URL_BASE = "https://www.la7.it"
-    URL_LIVE_LA7 = "https://www.la7.it/dirette-tv"
-    URL_LIVE_LA7CINEMA = "https://www.la7.it/live-la7cinema"
-    URL_LIVE_LA7EVENTI = "https://www.la7.it/live-eventi-la7"
+    URL_LIVE_LA7 = "https://www.la7play.it/dirette/la7"
+    URL_LIVE_LA7CINEMA = "https://www.la7play.it/dirette/la7-cinema"
+    URL_LIVE_LA7EVENTI = "https://www.la7play.it/live-eventi-la7"
     URL_MPD_LA7EVENTI = 'https://d15umi5iaezxgx.cloudfront.net/LA7FEED01/DRM/DASH/Live.mpd'
     URL_TGDIGITAL = "https://tg.la7.it/listing/tg-digital?page=0"
     URL_BASE_TGDIGITAL = "https://tg.la7.it"
     URL_PLAY_BASE = "https://www.la7play.it"
     URL_RIVEDILA7 = "https://www.la7play.it/guida-tv-rivedi/la7"
     URL_RIVEDILA7CINEMA = "https://www.la7play.it/guida-tv-rivedi/la7-cinema"
-    URL_PROGRAMMI = "https://www.la7.it/programmi"
-    URL_TUTTI_PROGRAMMI = "https://www.la7.it/tutti-i-programmi"
-    URL_TECHE_LA7 = "https://www.la7.it/tutti-i-personaggi"
-    URL_CERCA_LA7 = "https://www.la7.it/ricerca?query="
+    URL_PROGRAMMI = "https://www.la7play.it/programmi"
+    URL_TUTTI_PROGRAMMI = "https://www.la7play.it/programmi"
+    URL_TECHE_LA7 = "https://www.la7play.it/programmi"
+    URL_CERCA_LA7 = "https://www.la7play.it/ricerca?query="
+    URL_FILM = "https://www.la7play.it/film"
 
 
 

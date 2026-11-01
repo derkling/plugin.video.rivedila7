@@ -299,6 +299,60 @@ def giorno_label(data):
     return '%s %d %s' % (GIORNI_SETTIMANA[date.weekday()], date.day, MESI[date.month - 1])
 
 
+def la7play_nodes(url):
+    """ Content nodes (a path plus a title) published in a la7play.it page """
+    nodes = []
+    seen = set()
+
+    def walk(value):
+        if isinstance(value, dict):
+            path = value.get('path') or value.get('pathname')
+            title = value.get('titolo') or value.get('title') or value.get('nome')
+            if (isinstance(path, str) and path.startswith('/') and isinstance(title, str)
+                    and title and path not in seen):
+                seen.add(path)
+                nodes.append(value)
+            for item in value.values():
+                walk(item)
+        elif isinstance(value, list):
+            for item in value:
+                walk(item)
+
+    for line in rsc_payload(fetch_page(url)).split('\n'):
+        try:
+            walk(json.loads(re.sub(r'^[0-9a-f]+:', '', line)))
+        except ValueError:
+            continue
+    return nodes
+
+
+def la7play_list(url):
+    """ List the content nodes of a la7play.it page, folders or playable items """
+    nodes = la7play_nodes(url)
+    for node in nodes:
+        path = node.get('path') or node.get('pathname')
+        titolo = (node.get('titolo') or node.get('title') or node.get('nome') or '').strip()
+        plot = (node.get('sinossi') or node.get('sinossibreve') or node.get('description') or '').strip()
+        thumb = node.get('coverImage') or node.get('smartTvLocandina') or ''
+        upload = node.get('uploadVideo') or {}
+        playable = bool(upload.get('cf_remote_url')) or '/puntate/' in path or path.startswith('/film/')
+        liStyle = xbmcgui.ListItem(titolo, offscreen=True)
+        art = {'fanart': G.FANART_PATH}
+        if isinstance(thumb, str) and thumb.startswith('http'):
+            art['thumb'] = thumb
+        liStyle.setArt(art)
+        if plot:
+            liStyle.setInfo('video', {'plot': plot})
+        if playable:
+            liStyle.setProperty('isPlayable', 'true')
+            parameters = {"mode": G.MODE, "play": G.URL_PLAY_BASE + path, "titolo": titolo, "plot": plot}
+            url2 = G.PLUGIN_URL + '?' + urllib.parse.urlencode(parameters)
+            xbmcplugin.addDirectoryItem(handle=G.PLUGIN_HANDLE, url=url2, listitem=liStyle, isFolder=False)
+        else:
+            add_directory_item_nodup({"mode": G.MODE, "link": G.URL_PLAY_BASE + path}, liStyle, titolo)
+    xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=True)
+
+
 def video_link(video):
     """ Playable URL of a la7play.it node (NodeReplica/NodeVideo/NodeEventoSingolo),
     returned together with a flag telling whether the stream is DRM protected """
@@ -531,25 +585,8 @@ def programmi_lettera():
 def programmi_la7prime():
     titolo = 'Tutti i Film'
     liStyle = xbmcgui.ListItem(titolo, offscreen=True)
-    url_trovato = '/la7-cinema-tutti-i-film'
-    link = G.URL_BASE + url_trovato
+    link = G.URL_FILM
     thumb = os.path.join(G.THUMB_PATH, 'film.jpg')
-    liStyle.setArt({'thumb': thumb, 'fanart': G.FANART_PATH})
-    add_directory_item_nodup({"mode": G.MODE, "link": link}, liStyle, titolo)
-
-    titolo = 'Film e Fiction'
-    liStyle = xbmcgui.ListItem(titolo, offscreen=True)
-    url_trovato = '/film-e-fiction'
-    link = G.URL_BASE + url_trovato
-    thumb = os.path.join(G.THUMB_PATH, 'filmfiction.jpg')
-    liStyle.setArt({'thumb': thumb, 'fanart': G.FANART_PATH})
-    add_directory_item_nodup({"mode": G.MODE, "link": link}, liStyle, titolo)
-
-    titolo = 'Non Classificati'
-    liStyle = xbmcgui.ListItem(titolo, offscreen=True)
-    url_trovato = '/non-classificati'
-    link = G.URL_BASE + url_trovato
-    thumb = os.path.join(G.THUMB_PATH, 'filmfiction.jpg')
     liStyle.setArt({'thumb': thumb, 'fanart': G.FANART_PATH})
     add_directory_item_nodup({"mode": G.MODE, "link": link}, liStyle, titolo)
 
@@ -810,6 +847,11 @@ def video_programma_landpage():
 def video_programma():
     page = ''
     first = None
+
+    # la7play.it pages carry the whole content list in the page payload
+    if G.LINK.startswith(G.URL_PLAY_BASE):
+        la7play_list(G.LINK)
+        return
 
     #xbmc.log('PAGENUM------: '+str(G.PAGENUM),xbmc.LOGINFO)
     if (G.PAGENUM == 0):
@@ -1088,6 +1130,18 @@ def run(argv):
     else:
         G.PAGENUM = int(G.PARAMS.get("page", ""))
 
+    try:
+        dispatch()
+    except Exception as exc:
+        # A page that changed or a network error must never escape as a Python
+        # traceback: Kodi would only report "GetDirectory ... failed"
+        xbmc.log('RivediLA7: %s raised %s: %s' % (G.MODE, type(exc).__name__, exc), xbmc.LOGERROR)
+        xbmcgui.Dialog().ok(G.PLUGIN_NAME, G.LANGUAGE(32005))
+        xbmcplugin.endOfDirectory(G.PLUGIN_HANDLE, succeeded=False)
+
+
+def dispatch():
+    """ Route the request to the function of the current mode """
     if G.MODE == "diretta_la7":
         play_dirette(G.URL_LIVE_LA7, True)
 
