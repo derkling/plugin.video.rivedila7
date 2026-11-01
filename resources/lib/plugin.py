@@ -126,7 +126,8 @@ def play_dirette(url, live):
 def play_drm(mpdurl, preurl, titolo='', plot=''):
     """ Play a Widevine protected DASH stream through the conax license server """
     headers_tok = {
-        'host': G.HEADERS_SET['host_token'],
+        # 'host' is deliberately not set: the pre-authorization endpoint derives it from
+        # its own URL (the old pat.la7.it value made tk.php answer with an empty body)
         'user-agent': G.HEADERS_SET['user-agent'],
         'accept': G.HEADERS_SET['accept'],
         'accept-language': G.HEADERS_SET['accept-language'],

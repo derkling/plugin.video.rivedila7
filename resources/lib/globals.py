@@ -40,7 +40,6 @@ class GlobalVariables(object):
     DRM_PROTOCOL = 'mpd'
     KEY_WIDEVINE = "https://la7.prod.conax.cloud/widevine/license"
     HEADERS_SET = {
-        'host_token': 'pat.la7.it',
         'host_license': 'la7.prod.conax.cloud',
         'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36',
         'accept': '*/*',
