@@ -381,10 +381,8 @@ def play_video(page_video, live):
         play_drm(link_video, drm_token_url())
         return
 
-    if '.m3u8' in link_video:
-        listitem.setProperty('inputstream', 'inputstream.adaptive')
-        listitem.setProperty('inputstream.adaptive.manifest_type', 'hls')
-
+    # Clear HLS streams are played by Kodi itself: inputstream.adaptive is only
+    # needed for the Widevine protected DASH streams
     listitem.setPath(link_video)
     xbmcplugin.setResolvedUrl(G.PLUGIN_HANDLE, True, listitem)
 
