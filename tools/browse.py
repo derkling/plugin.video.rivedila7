@@ -201,7 +201,11 @@ def smoke():
         ('rivedi_la7', {'giorno': today}, 3),
         ('la7_prime', {}, 1),
         ('la7_prime', {'link': 'https://www.la7play.it/film'}, 10),
-        ('tutti_programmi', {}, 20),
+        ('tutti_programmi', {}, 9),
+        ('tutti_programmi', {'gruppo': 'Prima serata'}, 3),
+        ('tutti_programmi', {'lettera': 'tutti'}, 60),
+        ('documentari', {}, 10),
+        ('cerca_la7', {'q': 'maratona'}, 10),
     ]
     failures = 0
     for mode, params, minimum in sections:
