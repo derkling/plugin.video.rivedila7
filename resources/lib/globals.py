@@ -64,7 +64,7 @@ class GlobalVariables(object):
 
     # Live channels: fixed DASH manifests on the DRM CDN, token keyed by content id
     URL_MPD_LIVE_LA7 = "https://d15umi5iaezxgx.cloudfront.net/LA7/DRM/DASH/Live.mpd"
-    URL_MPD_LIVE_LA7CINEMA = "https://d15umi5iaezxgx.cloudfront.net/LA7CINEMA/DRM/DASH/Live.mpd"
+    URL_MPD_LIVE_LA7CINEMA = "https://d15umi5iaezxgx.cloudfront.net/LA7D/DRM/DASH/Live.mpd"
     DRM_LIVE_ID_LA7 = "1"
     DRM_LIVE_ID_LA7CINEMA = "2"
     HEADERS_SET = {
