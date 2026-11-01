@@ -47,6 +47,12 @@ class GlobalVariables(object):
         'contentSeoByPath': '66b5628df2976992',
         'siteSearch': '4da1e384f8a63808',
         'siteSearchSuggest': '647c199f01d967ce',
+        # listing of a program page: the path is the node name, e.g. "otto e mezzo"
+        'filteredNodeVideos': '6f384b6747f1a846',
+        'filteredNodeVideosNextPage': 'fe69b4f8f4cbd498',
+        'filteredNodeReplicas': 'e4ec45c8e38bb081',
+        'nodePage': 'e9d39e6838f7f588',
+        'nodeMenu': '4c25fdabd87a3720',
     }
 
 

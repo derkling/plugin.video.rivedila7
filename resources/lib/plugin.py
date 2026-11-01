@@ -14,6 +14,10 @@ _EMITTED = set()
 LA7PLAY_SEZIONI = {'puntate': 'Le puntate', 'video': 'Video', 'rivedila7': 'Archivio'}
 
 
+# sections of a program page the add-on does not track
+LA7PLAY_IGNORA = {'podcast'}
+
+
 def _is_ancestor(path, pathname):
     """ True when path is the page itself or one of its parents """
     return bool(path) and path != '/' and pathname.startswith(path.rstrip('/'))
@@ -416,17 +420,30 @@ def la7play_repliche(pathname):
 
 
 def la7play_sezioni(pathname):
-    """ The sub-sections of a program page that publish something """
+    """ The categories a program page offers: (path, label) """
+    try:
+        html = fetch_page(G.URL_PLAY_BASE + pathname)
+    except Exception as exc:
+        xbmc.log('RivediLA7: cannot read the sections of %s (%s)' % (pathname, exc), xbmc.LOGWARNING)
+        return []
+    # the categories the page links to, they are the "Vedi tutti" of its carousels
+    pattern = re.compile(r'"%s/([a-z0-9][a-z0-9-]*)(?:/([a-z0-9][a-z0-9-]*))?"' % re.escape(pathname))
     sezioni = []
-    for nome in LA7PLAY_SEZIONI:
-        path = pathname + '/' + nome
-        try:
-            # a section that the site does not publish answers 404
-            if la7play_nodes(G.URL_PLAY_BASE + path):
-                sezioni.append(path)
-        except Exception:
+    for match in pattern.finditer(html):
+        nome = match.group(2) or match.group(1)
+        path = pathname + '/' + match.group(1) + ('/' + match.group(2) if match.group(2) else '')
+        if nome in LA7PLAY_IGNORA or path in [path_ for path_, _ in sezioni]:
             continue
+        sezioni.append((path, nome.replace('-', ' ').capitalize()))
     return sezioni
+
+
+def la7play_next_page(url, pagina):
+    """ True when the page after the current one still publishes something """
+    try:
+        return bool(la7play_nodes('%s?page=%d' % (url, pagina + 1)))
+    except Exception:
+        return False
 
 
 def la7play_nodes(url):
@@ -1087,12 +1104,12 @@ def video_programma():
                  if not _is_ancestor(node.get('path') or node.get('pathname'), pathname)]
         la7play_emit(nodes)
         if pagina < 2 and pathname.rsplit('/', 1)[-1] not in LA7PLAY_SEZIONI:
-            for sezione in la7play_sezioni(pathname):
-                nome = LA7PLAY_SEZIONI[sezione.rsplit('/', 1)[-1]]
+            for sezione, nome in la7play_sezioni(pathname):
+                liStyle = xbmcgui.ListItem(nome, offscreen=True)
                 liStyle = xbmcgui.ListItem(nome, offscreen=True)
                 liStyle.setArt({'fanart': G.FANART_PATH})
                 add_directory_item_nodup({"mode": G.MODE, "link": G.URL_PLAY_BASE + sezione}, liStyle, nome)
-        if nodes:
+        if nodes and la7play_next_page(G.LINK, pagina):
             li_next = xbmcgui.ListItem('>> Pagina Successiva', offscreen=True)
             li_next.setArt({'fanart': G.FANART_PATH})
             add_directory_item_nodup({"mode": G.MODE, "link": G.LINK, "page": str(pagina + 1)},
