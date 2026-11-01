@@ -432,7 +432,10 @@ def la7play_sezioni(pathname):
     for match in pattern.finditer(html):
         nome = match.group(2) or match.group(1)
         path = pathname + '/' + match.group(1) + ('/' + match.group(2) if match.group(2) else '')
-        if nome in LA7PLAY_IGNORA or path in [path_ for path_, _ in sezioni]:
+        # a category, not a single video: those end with the id of the content
+        if re.search(r'-\d{5,}$', nome) or nome in LA7PLAY_IGNORA:
+            continue
+        if path in [path_ for path_, _ in sezioni]:
             continue
         sezioni.append((path, nome.replace('-', ' ').capitalize()))
     return sezioni
