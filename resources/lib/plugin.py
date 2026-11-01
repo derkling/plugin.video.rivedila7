@@ -165,6 +165,97 @@ def play_dirette(url, live):
         xbmcplugin.endOfDirectory(G.PLUGIN_HANDLE, succeeded=False)
 
 
+# la7play.it helpers: since the 2026 restyling la7.it redirects every content page
+# to la7play.it, a Next.js application. The old Drupal markup is gone: the schedule
+# and the player data are only available inside the React Server Components payload
+# embedded in each page.
+RSC_PUSH = 'self.__next_f.push('
+
+
+def fetch_page(url):
+    """ Download a page and return its decoded HTML """
+    req = Request(url, headers={'user-agent': G.HEADERS_SET['user-agent']})
+    return urlopen(req, timeout=30).read().decode('utf-8', 'replace')
+
+
+def rsc_payload(html):
+    """ Concatenate the React Server Components payloads embedded in a la7play.it page """
+    payload = []
+    pos = 0
+    while True:
+        pos = html.find(RSC_PUSH, pos)
+        if pos < 0:
+            return ''.join(payload)
+        start = pos + len(RSC_PUSH)
+        depth = 0
+        in_string = False
+        escaped = False
+        end = start
+        while end < len(html):
+            char = html[end]
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif char == '\\':
+                    escaped = True
+                elif char == '"':
+                    in_string = False
+            elif char == '"':
+                in_string = True
+            elif char == '[':
+                depth += 1
+            elif char == ']':
+                depth -= 1
+                if depth == 0:
+                    break
+            end += 1
+        try:
+            chunk = json.loads(html[start:end + 1])
+        except ValueError:
+            chunk = []
+        if len(chunk) > 1 and isinstance(chunk[1], str):
+            payload.append(chunk[1])
+        pos = end
+
+
+def rsc_value(payload, key):
+    """ Return the JSON value of the first "key": value pair found in the payload """
+    pos = payload.find('"%s":' % key)
+    if pos < 0:
+        return None
+    start = pos + len(key) + 3
+    while start < len(payload) and payload[start] in ' \t':
+        start += 1
+    depth = 0
+    in_string = False
+    escaped = False
+    end = start
+    while end < len(payload):
+        char = payload[end]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == '\\':
+                escaped = True
+            elif char == '"':
+                in_string = False
+        elif char == '"':
+            in_string = True
+        elif char in '[{':
+            depth += 1
+        elif char in ']}':
+            depth -= 1
+            if depth == 0:
+                break
+        elif char in ',}' and depth == 0:
+            break
+        end += 1
+    try:
+        return json.loads(payload[start:end + 1])
+    except ValueError:
+        return None
+
+
 def play_video(page_video, live):
     xbmc.log('PLAY VIDEO', xbmc.LOGINFO)
     #xbmc.log('PAGE VIDEO-----: '+str(page_video),xbmc.LOGINFO)
