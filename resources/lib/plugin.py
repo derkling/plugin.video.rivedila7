@@ -321,6 +321,38 @@ def gql(name, variables=None):
     return data['data']
 
 
+def la7play_gruppi():
+    """ The groups the la7play.it programs page is organised in """
+    route = gql('nsContentHub', {'path': '/programmi'}).get('route') or {}
+    entity = route.get('entity') or {}
+    return [slot for slot in entity.get('contentSlots') or []
+            if slot.get('titoloCarrello') and slot.get('paginatedItems')]
+
+
+def programmi_gruppo(nome):
+    """ List the programs of one of the groups of the programs page """
+    for slot in la7play_gruppi():
+        if slot['titoloCarrello'] != nome:
+            continue
+        la7play_emit(slot['paginatedItems'].get('items') or [])
+        return
+    xbmcgui.Dialog().ok(G.PLUGIN_NAME, G.LANGUAGE(32005))
+    xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=False)
+
+
+def programmi_gruppi_menu():
+    """ Show the groups of the programs page, then the full list """
+    for slot in la7play_gruppi():
+        nome = slot['titoloCarrello']
+        liStyle = xbmcgui.ListItem(nome, offscreen=True)
+        liStyle.setArt({'fanart': G.FANART_PATH})
+        add_directory_item_nodup({"mode": G.MODE, "gruppo": nome}, liStyle, nome)
+    liStyle = xbmcgui.ListItem('Tutti i programmi (A-Z)', offscreen=True)
+    liStyle.setArt({'fanart': G.FANART_PATH})
+    add_directory_item_nodup({"mode": G.MODE, "lettera": "tutti"}, liStyle, 'Tutti i programmi (A-Z)')
+    xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=True)
+
+
 def la7play_programmi():
     """ List the programs published by the la7play.it index """
     programmi = gql('allPrograms').get('graphqlTuttiProgrammi', {}).get('results') or []
@@ -655,7 +687,13 @@ def process_program_data(dati, config):
 
 
 def programmi_lettera():
-    la7play_programmi()
+    if G.PARAMS.get('gruppo'):
+        programmi_gruppo(G.PARAMS['gruppo'])
+        return
+    if G.PARAMS.get('lettera'):
+        la7play_programmi()
+        return
+    programmi_gruppi_menu()
     return
 
     config_path = os.path.join(os.path.dirname(__file__), 'config.json')
