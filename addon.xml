@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.rivedila7" name="LA7-LA7Cinema" version="7.2.3" provider-name="Luivit, Testato">
+<addon id="plugin.video.rivedila7" name="LA7-LA7Cinema" version="7.2.4" provider-name="Luivit, Testato">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="0.0.0"/>
@@ -10,7 +10,7 @@
     <provides>video</provides>
   </extension>
   <extension point="xbmc.addon.metadata">
-    <reuselanguageinvoker>true</reuselanguageinvoker>
+    <reuselanguageinvoker>false</reuselanguageinvoker>
     <summary lang="en_GB">LA7-LA7Cinema</summary>
     <description lang="en_GB">Live Streaming, Replay the last week, LA7 Prime, On-Demand programs, News and Weather, Teche LA7-The Protagonists</description>
     <summary lang="it_IT">LA7-LA7Cinema</summary>
@@ -29,7 +29,10 @@
       <screenshot>resources/screenshots/screenshot-01.jpg</screenshot>
       <screenshot>resources/screenshots/screenshot-02.jpg</screenshot>
     </assets>
-    <news>7.2.3 (2026-11-01)
+    <news>7.2.4 (2026-11-01)
+- Reload the add-on code on every call, so an update takes effect without restarting Kodi
+
+7.2.3 (2026-11-01)
 - Open the categories of a program (Puntate, Clip, …) with paginated access to the whole archive
 - Log the categories found on a program page, to compare the add-on with the site
 - Do not mistake a video for a category of its own program

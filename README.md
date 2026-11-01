@@ -7,6 +7,9 @@ Live Streaming, Replay the last week, LA7 Cinema, On-Demand programs, News & Wea
 "sudo apt install kodi-inputstream-adaptive"
 
 ### Changelog
+7.2.4 (2026-11-01)
+- Reload the add-on code on every call (`reuselanguageinvoker` off): an update takes effect without restarting Kodi, which made a new build look like the old one
+
 7.2.3 (2026-11-01)
 - Open the categories of a program (`Puntate`, `Clip`, …) with paginated access to the whole archive, instead of stopping at the last videos
 - Log the categories found on a program page, so the add-on can be compared with the site
