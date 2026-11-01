@@ -16,6 +16,8 @@ LA7PLAY_SEZIONI = {'puntate': 'Le puntate', 'video': 'Video', 'rivedila7': 'Arch
 
 # sections of a program page the add-on does not track
 LA7PLAY_IGNORA = {'podcast'}
+# how many episodes the archive query returns in one go, fewer if it refuses
+LA7PLAY_ARCHIVIO = 100
 
 
 def _is_ancestor(path, pathname):
@@ -456,14 +458,18 @@ def la7play_archivio(pathname, cursor=''):
     (a program publishes clips too), so the caller falls back to the page.
     """
     programma = pathname.strip('/').split('/')[0]
-    try:
-        name = gql('nodePage', {'path': programma})['route']['entity'].get('name') or programma
-        data = gql('filteredNodeReplicasNextPage', {'path': name, 'value': 20, 'after': cursor}) \
-            if cursor else gql('filteredNodeReplicas', {'path': name, 'value': 20})
-    except Exception as error:
-        xbmc.log('RivediLA7: archive of %s unavailable (%s)' % (pathname, error), xbmc.LOGWARNING)
-        return False
-    result = data.get('filteredNodeReplicas') or data.get('filteredNodeReplicasNextPage') or {}
+    name = programma
+    data = {}
+    for quanti in (LA7PLAY_ARCHIVIO, 50, 20):
+        try:
+            if name == programma:
+                name = gql('nodePage', {'path': programma})['route']['entity'].get('name') or programma
+            data = gql('filteredNodeReplicas', {'path': name, 'value': quanti})
+            break
+        except Exception as error:
+            # the query refuses more than it wants to return in one go
+            xbmc.log('RivediLA7: archive of %s at %d (%s)' % (pathname, quanti, error), xbmc.LOGWARNING)
+    result = data.get('filteredNodeReplicas') or {}
     nodes = result.get('nodes') or []
     prefisso = pathname.rstrip('/') + '/'
     if not nodes or not str(nodes[0].get('path') or '').startswith(prefisso):

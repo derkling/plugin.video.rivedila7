@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.rivedila7" name="LA7-LA7Cinema" version="7.2.7" provider-name="Luivit, Testato">
+<addon id="plugin.video.rivedila7" name="LA7-LA7Cinema" version="7.2.8" provider-name="Luivit, Testato">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="0.0.0"/>
@@ -29,7 +29,10 @@
       <screenshot>resources/screenshots/screenshot-01.jpg</screenshot>
       <screenshot>resources/screenshots/screenshot-02.jpg</screenshot>
     </assets>
-    <news>7.2.7 (2026-11-01)
+    <news>7.2.8 (2026-11-01)
+- Read up to a hundred episodes per archive, so the older ones are reachable and not only the latest twenty
+
+7.2.7 (2026-11-01)
 - Open the archive of every category, not only of "Puntate": the episode list comes from the site query, the page only carries a few teasers
 
 7.2.6 (2026-11-01)
