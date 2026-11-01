@@ -347,6 +347,36 @@ def la7play_programmi():
     xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=True)
 
 
+def la7play_repliche(pathname):
+    """ List the replays of a program from the guida TV of the last week """
+    added = 0
+    seen = set()
+    for url in (G.URL_RIVEDILA7, G.URL_RIVEDILA7CINEMA):
+        for giorno in guida_tv_giorni(url):
+            for prog in giorno['programma']:
+                path = prog.get('pathname') or ''
+                # a program owns its episodes, not the ones of a similarly named one
+                if not path.startswith(pathname.rstrip('/') + '/') or path in seen:
+                    continue
+                seen.add(path)
+                titolo = (prog.get('titolo') or '').strip()
+                plot = (prog.get('sinossi') or '').strip()
+                liStyle = xbmcgui.ListItem(giorno_label(giorno['data']) + ' ' + titolo, offscreen=True)
+                art = {'fanart': G.FANART_PATH}
+                thumb = prog.get('immagine_programma') or prog.get('immagine_scena') or ''
+                if thumb:
+                    art['thumb'] = thumb
+                liStyle.setArt(art)
+                liStyle.setInfo('video', {'plot': plot})
+                liStyle.setProperty('isPlayable', 'true')
+                parameters = {"mode": G.MODE, "play": G.URL_PLAY_BASE + path,
+                              "titolo": titolo, "thumb": thumb, "plot": plot}
+                url2 = G.PLUGIN_URL + '?' + urllib.parse.urlencode(parameters)
+                xbmcplugin.addDirectoryItem(handle=G.PLUGIN_HANDLE, url=url2, listitem=liStyle, isFolder=False)
+                added += 1
+    return added
+
+
 def la7play_nodes(url):
     """ Content nodes (a path plus a title) published in a la7play.it page """
     nodes = []
@@ -892,6 +922,10 @@ def video_programma():
 
     # la7play.it pages carry the whole content list in the page payload
     if G.LINK.startswith(G.URL_PLAY_BASE):
+        pathname = G.LINK[len(G.URL_PLAY_BASE):].rstrip('/')
+        if la7play_repliche(pathname):
+            xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=True)
+            return
         la7play_list(G.LINK)
         return
 
