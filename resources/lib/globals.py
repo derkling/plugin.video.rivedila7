@@ -33,6 +33,7 @@ class GlobalVariables(object):
     URL_TECHE_LA7 = "https://www.la7play.it/programmi"
     URL_CERCA_LA7 = "https://www.la7play.it/ricerca?query="
     URL_FILM = "https://www.la7play.it/film"
+    URL_DOCUMENTARI = "/documentari"
 
     # la7play.it persisted GraphQL queries (re-discover them with tools/browse.py --gql)
     GQL_QUERIES = {
@@ -42,6 +43,8 @@ class GlobalVariables(object):
         'desktopLeafVideoBundle': '656f3c6b927a1a0c',
         'desktopLeafReplicaBundle': '022b8f4f2fb98d68',
         'desktopNodeBio': '23bed4d00e549922',
+        'nsContentHub': '0f3f2c4225230faf',
+        'contentSeoByPath': '66b5628df2976992',
     }
 
 

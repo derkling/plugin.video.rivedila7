@@ -42,6 +42,9 @@ def show_root_menu():
     li_style = xbmcgui.ListItem('[B]' + G.LANGUAGE(32006) + '[/B]', offscreen=True)
     li_style.setArt({'thumb': os.path.join(G.THUMB_PATH, 'programmi.jpg'), 'fanart': G.FANART_PATH})
     add_directory_item_nodup({"mode": "tutti_programmi"}, li_style)
+    li_style = xbmcgui.ListItem('[B]Documentari[/B]', offscreen=True)
+    li_style.setArt({'thumb': os.path.join(G.THUMB_PATH, 'film.jpg'), 'fanart': G.FANART_PATH})
+    add_directory_item_nodup({"mode": "documentari"}, li_style)
     li_style = xbmcgui.ListItem('[B]' + G.LANGUAGE(32012) + '[/B]', offscreen=True)
     li_style.setArt({'thumb': os.path.join(G.THUMB_PATH, 'cerca.png'), 'fanart': G.FANART_PATH})
     add_directory_item_nodup({"mode": "cerca_la7"}, li_style)
@@ -395,9 +398,45 @@ def la7play_nodes(url):
     return nodes
 
 
+def content_nodes(value, nodes=None):
+    """ Collect the content nodes of an already decoded payload """
+    if nodes is None:
+        nodes = []
+    if isinstance(value, dict):
+        path = value.get('path') or value.get('pathname')
+        title = value.get('titolo') or value.get('title') or value.get('nome')
+        known = set(node.get('path') or node.get('pathname') for node in nodes)
+        if (isinstance(path, str) and path.startswith('/') and isinstance(title, str)
+                and title and path not in known):
+            nodes.append(value)
+        for item in value.values():
+            content_nodes(item, nodes)
+    elif isinstance(value, list):
+        for item in value:
+            content_nodes(item, nodes)
+    return nodes
+
+
 def la7play_list(url):
     """ List the content nodes of a la7play.it page, folders or playable items """
-    nodes = la7play_nodes(url)
+    la7play_emit(la7play_nodes(url))
+
+
+def la7play_hub(path):
+    """ List the contents of a la7play.it hub page, e.g. /documentari """
+    route = gql('nsContentHub', {'path': path}).get('route') or {}
+    la7play_emit(content_nodes(route.get('entity') or {}))
+
+
+def documentari():
+    """ Show the Documentari section """
+    if G.LINK != "":
+        la7play_list(G.LINK)
+        return
+    la7play_hub(G.URL_DOCUMENTARI)
+
+
+def la7play_emit(nodes):
     for node in nodes:
         path = node.get('path') or node.get('pathname')
         titolo = (node.get('titolo') or node.get('title') or node.get('nome') or '').strip()
@@ -1269,6 +1308,12 @@ def dispatch():
                 programmi_lettera_teche_la7()
             else:
                 mostra_biografia()
+        else:
+            play_video(G.PLAY, False)
+
+    elif G.MODE == "documentari":
+        if G.PLAY == "":
+            documentari()
         else:
             play_video(G.PLAY, False)
 
