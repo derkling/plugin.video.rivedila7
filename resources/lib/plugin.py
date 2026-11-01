@@ -120,6 +120,11 @@ def play_dirette(url, live):
         mpdurl = re.findall('dash.+?"(.+?)"', response, re.DOTALL)[0]
     #xbmc.log('URL VIDEO MPD-----: '+str(mpdurl),xbmc.LOGINFO)
 
+    play_drm(mpdurl, preurl, titolo_diretta, titolo_diretta)
+
+
+def play_drm(mpdurl, preurl, titolo='', plot=''):
+    """ Play a Widevine protected DASH stream through the conax license server """
     headers_tok = {
         'host': G.HEADERS_SET['host_token'],
         'user-agent': G.HEADERS_SET['user-agent'],
@@ -151,11 +156,9 @@ def play_dirette(url, live):
     # xbmc.log('LICENSE2------: '+str(lic_url),xbmc.LOGINFO)
     is_helper = inputstreamhelper.Helper(G.DRM_PROTOCOL, drm=G.DRM)
     if is_helper.check_inputstream():
-        listitem = xbmcgui.ListItem(offscreen=True)
+        listitem = xbmcgui.ListItem(titolo or G.TITOLO, offscreen=True)
         listitem.setPath(mpdurl)
-        if live:
-            # listitem.setLabel(titolo_diretta)
-            listitem.setInfo('video', {'plot': titolo_diretta, 'title': titolo_diretta})
+        listitem.setInfo('video', {'plot': plot or G.PLOT, 'title': titolo or G.TITOLO})
         listitem.setProperty("inputstream", is_helper.inputstream_addon)
         listitem.setProperty("inputstream.adaptive.manifest_type", G.DRM_PROTOCOL)
         listitem.setProperty("inputstream.adaptive.license_type", G.DRM)
