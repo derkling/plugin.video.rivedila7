@@ -45,6 +45,8 @@ class GlobalVariables(object):
         'desktopNodeBio': '23bed4d00e549922',
         'nsContentHub': '0f3f2c4225230faf',
         'contentSeoByPath': '66b5628df2976992',
+        'siteSearch': '4da1e384f8a63808',
+        'siteSearchSuggest': '647c199f01d967ce',
     }
 
 

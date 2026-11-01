@@ -807,6 +807,59 @@ def programmi_lettera_tg_meteo():
 
 
 def cerca_la7():
+    """ Search la7play.it and list the hits """
+    window = xbmcgui.Window(10000)
+    query = G.PARAMS.get('q', '') or window.getProperty('la7_search_query')
+    if not query:
+        testo = xbmcgui.Dialog().input("Ricerca nel sito", type=xbmcgui.INPUT_ALPHANUM)
+        if not testo:
+            xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=False)
+            return
+        query = testo.strip()
+    window.setProperty('la7_search_query', query)
+
+    page = max(G.PAGENUM, 1)
+    try:
+        results = gql('siteSearch', {'q': query, 'limit': 20, 'page': page}).get('siteSearch') or {}
+    except Exception as exc:
+        xbmc.log('RivediLA7: search for %s failed (%s)' % (query, exc), xbmc.LOGERROR)
+        xbmcgui.Dialog().ok(G.PLUGIN_NAME, G.LANGUAGE(32005))
+        xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=False)
+        return
+
+    for group in results.get('groups') or []:
+        for hit in group.get('hits') or []:
+            path = hit.get('url') or ''
+            if not path:
+                continue
+            titolo = (hit.get('title') or '').strip()
+            plot = (hit.get('excerpt') or hit.get('propertyName') or '').strip()
+            liStyle = xbmcgui.ListItem(titolo, offscreen=True)
+            art = {'fanart': G.FANART_PATH}
+            if hit.get('imageUrl'):
+                art['thumb'] = hit['imageUrl']
+            liStyle.setArt(art)
+            if plot:
+                liStyle.setInfo('video', {'plot': plot})
+            if hit.get('contentType') == 'video' or '/puntate/' in path or path.startswith('/film/'):
+                liStyle.setProperty('isPlayable', 'true')
+                parameters = {"mode": G.MODE, "play": G.URL_PLAY_BASE + path, "titolo": titolo, "plot": plot}
+                url2 = G.PLUGIN_URL + '?' + urllib.parse.urlencode(parameters)
+                xbmcplugin.addDirectoryItem(handle=G.PLUGIN_HANDLE, url=url2, listitem=liStyle, isFolder=False)
+            else:
+                # program or article: open it with the section that knows how to list it
+                add_directory_item_nodup({"mode": "tutti_programmi", "link": G.URL_PLAY_BASE + path}, liStyle, titolo)
+
+    if page < (results.get('totalPages') or 1):
+        li_next = xbmcgui.ListItem('>> Pagina Successiva', offscreen=True)
+        li_next.setArt({'fanart': G.FANART_PATH})
+        add_directory_item_nodup({"mode": G.MODE, "q": query, "page": str(page + 1)}, li_next, '>> Pagina Successiva')
+
+    xbmcplugin.setContent(G.PLUGIN_HANDLE, 'videos')
+    xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=True)
+
+
+def cerca_la7_legacy():
     window = xbmcgui.Window(10000)
     url = G.LINK
 
