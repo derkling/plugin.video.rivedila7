@@ -6,6 +6,9 @@ import sys
 import time
 import re
 import requests
+
+# paths already added to the directory being built, to avoid showing an item twice
+_EMITTED = set()
 import inputstreamhelper
 
 import urllib.parse
@@ -334,7 +337,7 @@ def programmi_gruppo(nome):
     for slot in la7play_gruppi():
         if slot['titoloCarrello'] != nome:
             continue
-        la7play_emit(slot['paginatedItems'].get('items') or [])
+        la7play_emit(slot['paginatedItems'].get('items') or [], reset=True)
         return
     xbmcgui.Dialog().ok(G.PLUGIN_NAME, G.LANGUAGE(32005))
     xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=False)
@@ -375,6 +378,7 @@ def la7play_programmi():
 
 def la7play_repliche(pathname):
     """ List the replays of a program from the guida TV of the last week """
+    _EMITTED.clear()
     added = 0
     seen = set()
     for url in (G.URL_RIVEDILA7, G.URL_RIVEDILA7CINEMA):
@@ -382,9 +386,9 @@ def la7play_repliche(pathname):
             for prog in giorno['programma']:
                 path = prog.get('pathname') or ''
                 # a program owns its episodes, not the ones of a similarly named one
-                if not path.startswith(pathname.rstrip('/') + '/') or path in seen:
+                if not path.startswith(pathname.rstrip('/') + '/') or path in _EMITTED:
                     continue
-                seen.add(path)
+                _EMITTED.add(path)
                 titolo = (prog.get('titolo') or '').strip()
                 plot = (prog.get('sinossi') or '').strip()
                 liStyle = xbmcgui.ListItem(giorno_label(giorno['data']) + ' ' + titolo, offscreen=True)
@@ -451,13 +455,13 @@ def content_nodes(value, nodes=None):
 
 def la7play_list(url):
     """ List the content nodes of a la7play.it page, folders or playable items """
-    la7play_emit(la7play_nodes(url))
+    la7play_emit(la7play_nodes(url), reset=True)
 
 
 def la7play_hub(path):
     """ List the contents of a la7play.it hub page, e.g. /documentari """
     route = gql('nsContentHub', {'path': path}).get('route') or {}
-    la7play_emit(content_nodes(route.get('entity') or {}))
+    la7play_emit(content_nodes(route.get('entity') or {}), reset=True)
 
 
 def documentari():
@@ -468,7 +472,9 @@ def documentari():
     la7play_hub(G.URL_DOCUMENTARI)
 
 
-def la7play_emit(nodes):
+def la7play_emit(nodes, reset=False):
+    if reset:
+        _EMITTED.clear()
     for node in nodes:
         path = node.get('path') or node.get('pathname')
         titolo = (node.get('titolo') or node.get('title') or node.get('nome') or '').strip()
@@ -1047,13 +1053,16 @@ def video_programma():
     page = ''
     first = None
 
-    # la7play.it pages carry the whole content list in the page payload
+    # la7play.it pages carry the whole content list in the page payload: show the
+    # replays of the week first, then whatever else the page publishes
     if G.LINK.startswith(G.URL_PLAY_BASE):
         pathname = G.LINK[len(G.URL_PLAY_BASE):].rstrip('/')
-        if la7play_repliche(pathname):
-            xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=True)
-            return
-        la7play_list(G.LINK)
+        la7play_repliche(pathname)
+        all_nodes = la7play_nodes(G.LINK)
+        nodes = [node for node in all_nodes
+                 if (node.get('path') or node.get('pathname')) != pathname]
+        la7play_emit(nodes or all_nodes)
+        xbmcplugin.endOfDirectory(handle=G.PLUGIN_HANDLE, succeeded=True)
         return
 
     #xbmc.log('PAGENUM------: '+str(G.PAGENUM),xbmc.LOGINFO)
